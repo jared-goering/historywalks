@@ -17,9 +17,16 @@ interface ExplorerProps {
   world?: World;
 }
 
+function isMobileDevice(): boolean {
+  if (typeof window === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
+    (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+}
+
 export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [webglSupported, setWebglSupported] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -35,6 +42,13 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // Detect mobile — Gaussian Splatting doesn't work reliably on mobile GPUs
+    if (isMobileDevice()) {
+      setIsMobile(true);
+      setLoading(false);
+      return;
+    }
 
     // Check WebGL2 support
     const testCanvas = document.createElement("canvas");
@@ -153,6 +167,40 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
   if (!webglSupported) {
     return <WebGLError />;
+  }
+
+  // Mobile fallback: show thumbnail with panoramic Ken Burns effect
+  if (isMobile) {
+    return (
+      <>
+        <div className="fixed inset-0 overflow-hidden bg-[#1a1a2e]">
+          {/* Thumbnail background with slow zoom */}
+          <div
+            className="absolute inset-0 animate-slow-zoom"
+            style={{
+              backgroundImage: `url(${world.assets.thumbnail})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+          {/* Gradient overlay for readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/70" />
+        </div>
+
+        {/* Mobile notice */}
+        <div className="fixed left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2 text-center px-6">
+          <p className="text-white/80 text-sm mb-2">
+            🖥️ For the full 3D walkthrough, visit on desktop
+          </p>
+          <p className="text-white/40 text-xs">
+            Gaussian Splatting requires desktop GPU
+          </p>
+        </div>
+
+        <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={true} />
+        <NarrationPanel text={world.narration} visible={true} />
+      </>
+    );
   }
 
   return (
