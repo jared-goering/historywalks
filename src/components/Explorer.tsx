@@ -20,6 +20,7 @@ interface ExplorerProps {
 export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [webglSupported, setWebglSupported] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -79,10 +80,18 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
       // Load splat — use 500k for balance of quality and performance
       const splatMesh = new SplatMesh({ url: world.assets.spz500k });
+      splatMesh.addEventListener("load", () => {
+        setLoading(false);
+      });
+      // Fallback: hide loading after 15s even if load event doesn't fire
+      const loadTimeout = setTimeout(() => setLoading(false), 15000);
       scene.add(splatMesh);
 
       // Set camera to world's ground plane + eye height
       camera.position.y = world.scale.groundPlaneOffset + 1.7 * world.scale.metricScaleFactor;
+      // Look slightly downward so the scene is visible on load (not staring at sky)
+      camera.rotation.order = "YXZ";
+      camera.rotation.x = -0.15;
 
       // FPS controls
       const controls = new FirstPersonControls(camera, renderer.domElement, {
@@ -116,6 +125,7 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
       // Cleanup function stored for disposal
       return () => {
         disposed = true;
+        clearTimeout(loadTimeout);
         renderer.setAnimationLoop(null);
         window.removeEventListener("resize", onResize);
         controls.dispose();
@@ -146,6 +156,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   return (
     <>
       <div ref={containerRef} className="fixed inset-0" />
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#1a1a2e]">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-white" />
+          <p className="mt-4 text-sm text-white/60">Loading {world.displayName}…</p>
+        </div>
+      )}
       <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={overlayVisible} />
       <NarrationPanel text={world.narration} visible={overlayVisible} />
       <ControlsHelp />
