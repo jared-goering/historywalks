@@ -1,10 +1,15 @@
 import * as THREE from "three";
 import type { ControlsState } from "@/types";
 
-const MOVE_SPEED = 5;
+const DEFAULT_MOVE_SPEED = 5;
 const SPRINT_MULTIPLIER = 2.5;
 const MOUSE_SENSITIVITY = 0.002;
-const EYE_HEIGHT = 1.7;
+const DEFAULT_EYE_HEIGHT = 1.7;
+
+interface ControlsOptions {
+  eyeHeight?: number;
+  moveSpeed?: number;
+}
 
 export class FirstPersonControls {
   private camera: THREE.PerspectiveCamera;
@@ -21,12 +26,16 @@ export class FirstPersonControls {
   };
   private isLocked = false;
   private onMovementCallback: (() => void) | null = null;
+  private eyeHeight: number;
+  private moveSpeed: number;
 
-  constructor(camera: THREE.PerspectiveCamera, domElement: HTMLElement) {
+  constructor(camera: THREE.PerspectiveCamera, domElement: HTMLElement, options?: ControlsOptions) {
     this.camera = camera;
     this.domElement = domElement;
+    this.eyeHeight = options?.eyeHeight ?? DEFAULT_EYE_HEIGHT;
+    this.moveSpeed = options?.moveSpeed ?? DEFAULT_MOVE_SPEED;
 
-    this.camera.position.y = EYE_HEIGHT;
+    this.camera.position.y = this.eyeHeight;
 
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
@@ -131,7 +140,7 @@ export class FirstPersonControls {
   }
 
   update(delta: number) {
-    const speed = this.keys.shift ? MOVE_SPEED * SPRINT_MULTIPLIER : MOVE_SPEED;
+    const speed = this.keys.shift ? this.moveSpeed * SPRINT_MULTIPLIER : this.moveSpeed;
 
     this.direction.set(0, 0, 0);
 
@@ -151,7 +160,7 @@ export class FirstPersonControls {
     this.velocity.copy(this.direction).multiplyScalar(speed * delta);
     this.camera.position.add(this.velocity);
     // Maintain eye height
-    this.camera.position.y = EYE_HEIGHT;
+    this.camera.position.y = this.eyeHeight;
   }
 
   dispose() {

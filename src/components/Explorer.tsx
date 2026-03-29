@@ -6,14 +6,18 @@ import EraBar from "./EraBar";
 import ControlsHelp from "./ControlsHelp";
 import WebGLError from "./WebGLError";
 
-const SPLAT_URL = "https://sparkjs.dev/assets/splats/butterfly.spz";
+import { WORLDS, type World } from "@/lib/worlds";
+
 const FADE_TIMEOUT = 5000;
 
-const NARRATION_TEXT =
-  "You\u2019re standing at the entrance to the Forum. Ahead of you, the Temple of Saturn rises with its eight columns \u2014 one of the oldest and most sacred monuments in ancient Rome.";
-const ERA_TEXT = "\uD83C\uDFDB\uFE0F Rome, ~100 AD \u00B7 The Forum Romanum";
+// Default to Rome (free world)
+const DEFAULT_WORLD = WORLDS[0];
 
-export default function Explorer() {
+interface ExplorerProps {
+  world?: World;
+}
+
+export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [webglSupported, setWebglSupported] = useState(true);
   const [overlayVisible, setOverlayVisible] = useState(true);
@@ -73,12 +77,18 @@ export default function Explorer() {
       const spark = new SparkRenderer({ renderer });
       scene.add(spark);
 
-      // Load splat
-      const splatMesh = new SplatMesh({ url: SPLAT_URL });
+      // Load splat — use 500k for balance of quality and performance
+      const splatMesh = new SplatMesh({ url: world.assets.spz500k });
       scene.add(splatMesh);
 
+      // Set camera to world's ground plane + eye height
+      camera.position.y = world.scale.groundPlaneOffset + 1.7 * world.scale.metricScaleFactor;
+
       // FPS controls
-      const controls = new FirstPersonControls(camera, renderer.domElement);
+      const controls = new FirstPersonControls(camera, renderer.domElement, {
+        eyeHeight: world.scale.groundPlaneOffset + 1.7 * world.scale.metricScaleFactor,
+        moveSpeed: 5 * world.scale.metricScaleFactor,
+      });
       controls.onMovement(() => resetFadeTimer());
 
       // Start fade timer
@@ -136,8 +146,8 @@ export default function Explorer() {
   return (
     <>
       <div ref={containerRef} className="fixed inset-0" />
-      <EraBar era={ERA_TEXT} visible={overlayVisible} />
-      <NarrationPanel text={NARRATION_TEXT} visible={overlayVisible} />
+      <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={overlayVisible} />
+      <NarrationPanel text={world.narration} visible={overlayVisible} />
       <ControlsHelp />
     </>
   );
