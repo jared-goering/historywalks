@@ -80,12 +80,11 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
       // Load splat — use 500k for balance of quality and performance
       const splatMesh = new SplatMesh({ url: world.assets.spz500k });
-      splatMesh.addEventListener("load", () => {
-        setLoading(false);
-      });
-      // Fallback: hide loading after 15s even if load event doesn't fire
-      const loadTimeout = setTimeout(() => setLoading(false), 15000);
       scene.add(splatMesh);
+
+      // Hide loading screen after a brief delay to let the SPZ start rendering
+      // SplatMesh streams data progressively, so content appears within seconds
+      const loadTimeout = setTimeout(() => setLoading(false), 3000);
 
       // Position camera at ground level — World Labs SPZ uses Y-up, scene centered at origin
       // groundPlaneOffset is the Y coordinate of the ground plane
