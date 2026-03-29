@@ -87,16 +87,19 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
       const loadTimeout = setTimeout(() => setLoading(false), 15000);
       scene.add(splatMesh);
 
-      // Set camera to world's ground plane + eye height
-      camera.position.y = world.scale.groundPlaneOffset + 1.7 * world.scale.metricScaleFactor;
-      // Look slightly downward so the scene is visible on load (not staring at sky)
+      // Position camera at ground level — World Labs SPZ uses Y-up, scene centered at origin
+      // groundPlaneOffset is the Y coordinate of the ground plane
+      // metricScaleFactor converts real meters to scene units
+      const eyeY = world.scale.groundPlaneOffset;
+      camera.position.set(0, eyeY, 0);
+      // Look forward (level horizon)
       camera.rotation.order = "YXZ";
-      camera.rotation.x = -0.15;
+      camera.rotation.x = 0;
 
       // FPS controls
       const controls = new FirstPersonControls(camera, renderer.domElement, {
-        eyeHeight: world.scale.groundPlaneOffset + 1.7 * world.scale.metricScaleFactor,
-        moveSpeed: 5 * world.scale.metricScaleFactor,
+        eyeHeight: eyeY,
+        moveSpeed: 3 * world.scale.metricScaleFactor,
       });
       controls.onMovement(() => resetFadeTimer());
 
