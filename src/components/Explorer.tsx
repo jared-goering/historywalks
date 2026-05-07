@@ -9,6 +9,8 @@ import WebGLError from "./WebGLError";
 import { WORLDS, type World } from "@/lib/worlds";
 
 const FADE_TIMEOUT = 5000;
+const FULL_RES_SWAP_DELAY = 3500;
+const INITIAL_LOADING_TIMEOUT = 2200;
 
 // Default to Rome (free world)
 const DEFAULT_WORLD = WORLDS[0];
@@ -21,6 +23,48 @@ function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
   return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || 
     (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+}
+
+function shouldAttemptFullResolution(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const requestedQuality = searchParams.get("quality");
+  if (requestedQuality === "full") return true;
+  if (requestedQuality === "fast" || requestedQuality === "500k") return false;
+
+  const connection = (navigator as Navigator & {
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }).connection;
+
+  if (connection?.saveData) return false;
+  if (connection?.effectiveType && ["slow-2g", "2g", "3g"].includes(connection.effectiveType)) {
+    return false;
+  }
+
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  return !deviceMemory || deviceMemory >= 8;
+}
+
+function createSkyTexture(THREE: typeof import("three")) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 16;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+
+  if (!context) return new THREE.Color(0x182033);
+
+  const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+  gradient.addColorStop(0, "#7387a6");
+  gradient.addColorStop(0.45, "#c9b28a");
+  gradient.addColorStop(0.72, "#6f5f50");
+  gradient.addColorStop(1, "#16131d");
+  context.fillStyle = gradient;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
@@ -71,10 +115,11 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
       // Scene setup
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x1a1a2e);
+      scene.background = createSkyTexture(THREE);
+      scene.fog = new THREE.FogExp2(0x2b2430, 0.024);
 
       const camera = new THREE.PerspectiveCamera(
-        75,
+        world.camera.fov,
         window.innerWidth / window.innerHeight,
         0.1,
         1000
@@ -85,29 +130,48 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
         powerPreference: "high-performance",
       });
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.setClearColor(0x1a1a2e, 1);
       container.appendChild(renderer.domElement);
 
       // SparkJS renderer
       const spark = new SparkRenderer({ renderer });
       scene.add(spark);
 
-      // Load splat — use 500k for balance of quality and performance
-      const splatMesh = new SplatMesh({ url: world.assets.spz500k });
-      scene.add(splatMesh);
+      // Load the 500k splat first so the scene appears quickly, then upgrade
+      // capable desktop devices to the full-res Marble export. The URL query
+      // param `?quality=fast` disables the upgrade for Chromebook testing;
+      // `?quality=full` forces it for visual QA.
+      const previewSplat = new SplatMesh({ url: world.assets.spz500k });
+      scene.add(previewSplat);
+
+      let fullResSplat: InstanceType<typeof SplatMesh> | undefined;
+      const fullResTimeout = shouldAttemptFullResolution()
+        ? setTimeout(() => {
+            if (disposed) return;
+            fullResSplat = new SplatMesh({ url: world.assets.spzFull });
+            scene.add(fullResSplat);
+
+            window.setTimeout(() => {
+              if (disposed) return;
+              scene.remove(previewSplat);
+              previewSplat.dispose();
+            }, 1800);
+          }, FULL_RES_SWAP_DELAY)
+        : undefined;
 
       // Hide loading screen after a brief delay to let the SPZ start rendering
       // SplatMesh streams data progressively, so content appears within seconds
-      const loadTimeout = setTimeout(() => setLoading(false), 3000);
+      const loadTimeout = setTimeout(() => setLoading(false), INITIAL_LOADING_TIMEOUT);
 
       // Position camera at ground level — World Labs SPZ uses Y-up, scene centered at origin
       // groundPlaneOffset is the Y coordinate of the ground plane
       // metricScaleFactor converts real meters to scene units
       const eyeY = world.scale.groundPlaneOffset;
-      camera.position.set(0, eyeY, 0);
-      // Look forward (level horizon)
+      camera.position.set(...world.camera.start);
       camera.rotation.order = "YXZ";
-      camera.rotation.x = 0;
+      camera.lookAt(...world.camera.lookAt);
 
       // FPS controls
       const controls = new FirstPersonControls(camera, renderer.domElement, {
@@ -142,10 +206,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
       return () => {
         disposed = true;
         clearTimeout(loadTimeout);
+        if (fullResTimeout) clearTimeout(fullResTimeout);
         renderer.setAnimationLoop(null);
         window.removeEventListener("resize", onResize);
         controls.dispose();
-        splatMesh.dispose();
+        previewSplat.dispose();
+        fullResSplat?.dispose();
         renderer.dispose();
         if (container.contains(renderer.domElement)) {
           container.removeChild(renderer.domElement);
@@ -163,7 +229,7 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
       cleanup?.();
       if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     };
-  }, [resetFadeTimer]);
+  }, [resetFadeTimer, world]);
 
   if (!webglSupported) {
     return <WebGLError />;

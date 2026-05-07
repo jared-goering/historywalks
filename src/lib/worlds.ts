@@ -17,6 +17,11 @@ export interface World {
     metricScaleFactor: number;
     groundPlaneOffset: number;
   };
+  camera: {
+    start: [number, number, number];
+    lookAt: [number, number, number];
+    fov: number;
+  };
   free: boolean;
 }
 
@@ -47,6 +52,13 @@ export const WORLDS: World[] = [
       metricScaleFactor: 1.6633737,
       groundPlaneOffset: 0.99795973,
     },
+    camera: {
+      // Back the visitor out from the center of the splat instead of starting
+      // inside dense geometry, which made the first view feel muddy/blobby.
+      start: [0, 0.99795973, 6.5],
+      lookAt: [0, 1.15, 0],
+      fov: 62,
+    },
     free: true,
   },
   {
@@ -75,6 +87,11 @@ export const WORLDS: World[] = [
       metricScaleFactor: 2.2446795,
       groundPlaneOffset: 1.2364373,
     },
+    camera: {
+      start: [0, 1.2364373, 8],
+      lookAt: [0, 1.5, 0],
+      fov: 60,
+    },
     free: false,
   },
   {
@@ -102,6 +119,11 @@ export const WORLDS: World[] = [
     scale: {
       metricScaleFactor: 2.3562398,
       groundPlaneOffset: 3.1217036,
+    },
+    camera: {
+      start: [0, 3.1217036, 8],
+      lookAt: [0, 3.35, 0],
+      fov: 60,
     },
     free: false,
   },
