@@ -67,6 +67,78 @@ function createSkyTexture(THREE: typeof import("three")) {
   return texture;
 }
 
+function PoiGuide({
+  world,
+  selectedPoiId,
+  onSelect,
+  onReset,
+}: {
+  world: World;
+  selectedPoiId: string | null;
+  onSelect: (poiId: string) => void;
+  onReset: () => void;
+}) {
+  const selectedIndex = world.pointsOfInterest.findIndex((poi) => poi.id === selectedPoiId);
+
+  return (
+    <aside className="fixed bottom-36 left-4 z-30 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-black/55 p-4 text-white shadow-2xl backdrop-blur-md pointer-events-auto sm:bottom-32">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-amber-200/80">
+            POI Guide
+          </p>
+          <h2 className="mt-1 text-sm font-semibold text-white">
+            Investigate the scene
+          </h2>
+        </div>
+        <div className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/70">
+          {selectedIndex >= 0 ? selectedIndex + 1 : 0}/{world.pointsOfInterest.length}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2" aria-label="Points of interest">
+        {world.pointsOfInterest.map((poi, index) => {
+          const isSelected = poi.id === selectedPoiId;
+
+          return (
+            <button
+              key={poi.id}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onSelect(poi.id)}
+              className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-amber-100 ${
+                isSelected
+                  ? "border-amber-200 bg-amber-300 text-stone-950"
+                  : "border-white/10 bg-white/[0.06] text-white/80 hover:border-amber-200/50 hover:bg-white/10"
+              }`}
+            >
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${isSelected ? "bg-stone-950 text-amber-200" : "bg-amber-300/20 text-amber-200"}`}>
+                {index + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{poi.title}</span>
+                <span className={`block truncate text-xs ${isSelected ? "text-stone-800" : "text-white/50"}`}>
+                  Tap marker or list item to hear context
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedPoiId && (
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-3 text-xs font-medium text-white/60 underline-offset-4 hover:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-amber-100"
+        >
+          Return to intro narration
+        </button>
+      )}
+    </aside>
+  );
+}
+
 export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [webglSupported, setWebglSupported] = useState(true);
@@ -89,6 +161,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
   const showPointOfInterest = useCallback((poiId: string) => {
     setSelectedPoiId(poiId);
+    setOverlayVisible(true);
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
+  }, []);
+
+  const resetNarration = useCallback(() => {
+    setSelectedPoiId(null);
     setOverlayVisible(true);
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
   }, []);
@@ -290,32 +368,42 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
       )}
       <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={overlayVisible} />
       {!loading && (
-        <div className="fixed inset-0 z-20 pointer-events-none" aria-label="Points of interest">
-          {world.pointsOfInterest.map((poi) => {
-            const isSelected = poi.id === selectedPoiId;
+        <>
+          <div className="fixed inset-0 z-20 pointer-events-none" aria-label="Points of interest">
+            {world.pointsOfInterest.map((poi, index) => {
+              const isSelected = poi.id === selectedPoiId;
 
-            return (
-              <button
-                key={poi.id}
-                type="button"
-                aria-pressed={isSelected}
-                aria-label={`Learn about ${poi.title}`}
-                onClick={() => showPointOfInterest(poi.id)}
-                className={`group absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 rounded-full border text-left shadow-[0_0_30px_rgba(251,191,36,0.28)] backdrop-blur transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-100 ${
-                  isSelected
-                    ? "border-amber-200 bg-amber-300 text-stone-950"
-                    : "border-amber-200/50 bg-black/55 text-white hover:bg-black/70"
-                }`}
-                style={{ left: `${poi.screenPosition.left}%`, top: `${poi.screenPosition.top}%` }}
-              >
-                <span className="relative flex items-center gap-2 px-3 py-2 text-xs font-semibold sm:text-sm">
-                  <span className={`h-2.5 w-2.5 rounded-full ${isSelected ? "bg-stone-950" : "bg-amber-300"}`} />
-                  <span className="hidden sm:inline">{poi.shortLabel}</span>
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={poi.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  aria-label={`Learn about ${poi.title}`}
+                  onClick={() => showPointOfInterest(poi.id)}
+                  className={`group absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 rounded-full border text-left shadow-[0_0_30px_rgba(251,191,36,0.28)] backdrop-blur transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-100 ${
+                    isSelected
+                      ? "border-amber-200 bg-amber-300 text-stone-950"
+                      : "border-amber-200/50 bg-black/55 text-white hover:bg-black/70"
+                  }`}
+                  style={{ left: `${poi.screenPosition.left}%`, top: `${poi.screenPosition.top}%` }}
+                >
+                  <span className="relative flex items-center gap-2 px-3 py-2 text-xs font-semibold sm:text-sm">
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.65rem] ${isSelected ? "bg-stone-950 text-amber-200" : "bg-amber-300 text-stone-950"}`}>
+                      {index + 1}
+                    </span>
+                    <span className="hidden sm:inline">{poi.shortLabel}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <PoiGuide
+            world={world}
+            selectedPoiId={selectedPoiId}
+            onSelect={showPointOfInterest}
+            onReset={resetNarration}
+          />
+        </>
       )}
       <NarrationPanel title={selectedPoi?.title} text={narrationText} visible={overlayVisible} />
       <ControlsHelp />
