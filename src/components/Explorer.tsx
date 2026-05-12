@@ -73,7 +73,11 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [overlayVisible, setOverlayVisible] = useState(true);
+  const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const selectedPoi = world.pointsOfInterest.find((poi) => poi.id === selectedPoiId);
+  const narrationText = selectedPoi?.narration ?? world.narration;
 
   const resetFadeTimer = useCallback(() => {
     setOverlayVisible(true);
@@ -81,6 +85,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
     fadeTimerRef.current = setTimeout(() => {
       setOverlayVisible(false);
     }, FADE_TIMEOUT);
+  }, []);
+
+  const showPointOfInterest = useCallback((poiId: string) => {
+    setSelectedPoiId(poiId);
+    setOverlayVisible(true);
+    if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -264,7 +274,7 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
         </div>
 
         <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={true} />
-        <NarrationPanel text={world.narration} visible={true} />
+        <NarrationPanel text={narrationText} visible={true} />
       </>
     );
   }
@@ -279,7 +289,35 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
         </div>
       )}
       <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={overlayVisible} />
-      <NarrationPanel text={world.narration} visible={overlayVisible} />
+      {!loading && (
+        <div className="fixed inset-0 z-20 pointer-events-none" aria-label="Points of interest">
+          {world.pointsOfInterest.map((poi) => {
+            const isSelected = poi.id === selectedPoiId;
+
+            return (
+              <button
+                key={poi.id}
+                type="button"
+                aria-pressed={isSelected}
+                aria-label={`Learn about ${poi.title}`}
+                onClick={() => showPointOfInterest(poi.id)}
+                className={`group absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 rounded-full border text-left shadow-[0_0_30px_rgba(251,191,36,0.28)] backdrop-blur transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-100 ${
+                  isSelected
+                    ? "border-amber-200 bg-amber-300 text-stone-950"
+                    : "border-amber-200/50 bg-black/55 text-white hover:bg-black/70"
+                }`}
+                style={{ left: `${poi.screenPosition.left}%`, top: `${poi.screenPosition.top}%` }}
+              >
+                <span className="relative flex items-center gap-2 px-3 py-2 text-xs font-semibold sm:text-sm">
+                  <span className={`h-2.5 w-2.5 rounded-full ${isSelected ? "bg-stone-950" : "bg-amber-300"}`} />
+                  <span className="hidden sm:inline">{poi.shortLabel}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <NarrationPanel title={selectedPoi?.title} text={narrationText} visible={overlayVisible} />
       <ControlsHelp />
     </>
   );

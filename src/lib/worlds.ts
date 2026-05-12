@@ -22,7 +22,19 @@ export interface World {
     lookAt: [number, number, number];
     fov: number;
   };
+  pointsOfInterest: PointOfInterest[];
   free: boolean;
+}
+
+export interface PointOfInterest {
+  id: string;
+  title: string;
+  shortLabel: string;
+  narration: string;
+  screenPosition: {
+    left: number;
+    top: number;
+  };
 }
 
 export const WORLDS: World[] = [
@@ -59,6 +71,32 @@ export const WORLDS: World[] = [
       lookAt: [0, 1.15, 0],
       fov: 62,
     },
+    pointsOfInterest: [
+      {
+        id: "temple-of-saturn",
+        title: "Temple of Saturn",
+        shortLabel: "Saturn",
+        narration:
+          "The Temple of Saturn was one of the Forum's oldest sacred buildings. Romans stored the state treasury here, which made the temple both a religious landmark and a symbol of public wealth.",
+        screenPosition: { left: 48, top: 42 },
+      },
+      {
+        id: "sacred-way",
+        title: "The Sacred Way",
+        shortLabel: "Sacred Way",
+        narration:
+          "The Sacred Way was the Forum's ceremonial spine. Triumphing generals, merchants, senators, and everyday Romans all moved through this route, turning the Forum into a theater of civic life.",
+        screenPosition: { left: 58, top: 58 },
+      },
+      {
+        id: "rostra",
+        title: "The Rostra",
+        shortLabel: "Rostra",
+        narration:
+          "The Rostra was Rome's speakers' platform. Public speeches, political arguments, and announcements happened here, so standing near it meant standing close to the sound of Roman power.",
+        screenPosition: { left: 38, top: 54 },
+      },
+    ],
     free: true,
   },
   {
@@ -92,6 +130,32 @@ export const WORLDS: World[] = [
       lookAt: [0, 1.5, 0],
       fov: 60,
     },
+    pointsOfInterest: [
+      {
+        id: "limestone-casing",
+        title: "White limestone casing",
+        shortLabel: "Casing",
+        narration:
+          "The Great Pyramid originally gleamed with smooth white limestone casing stones. Those polished blocks reflected sunlight and made the monument visible from far across the Nile floodplain.",
+        screenPosition: { left: 50, top: 38 },
+      },
+      {
+        id: "construction-ramp",
+        title: "Construction ramps",
+        shortLabel: "Ramps",
+        narration:
+          "Workers likely used large ramp systems to move stone blocks upward as the pyramid rose. The exact ramp design is still debated, which makes this site a real archaeological puzzle.",
+        screenPosition: { left: 62, top: 58 },
+      },
+      {
+        id: "nile-plain",
+        title: "Nile floodplain",
+        shortLabel: "Nile",
+        narration:
+          "The Nile made pyramid building possible. Seasonal floods carried stone, food, and workers close to the plateau, connecting this monumental project to Egypt's agricultural calendar.",
+        screenPosition: { left: 34, top: 62 },
+      },
+    ],
     free: false,
   },
   {
@@ -125,6 +189,32 @@ export const WORLDS: World[] = [
       lookAt: [0, 3.35, 0],
       fov: 60,
     },
+    pointsOfInterest: [
+      {
+        id: "painted-marble",
+        title: "Painted marble",
+        shortLabel: "Color",
+        narration:
+          "The Parthenon was not plain white marble in antiquity. Bright red, blue, and gold paint highlighted sculpture and architecture, making the temple far more vivid than modern ruins suggest.",
+        screenPosition: { left: 48, top: 40 },
+      },
+      {
+        id: "athena-statue",
+        title: "Athena's statue",
+        shortLabel: "Athena",
+        narration:
+          "Inside stood a monumental statue of Athena, covered with gold and ivory. It declared both religious devotion and Athens' political confidence at the height of its power.",
+        screenPosition: { left: 55, top: 52 },
+      },
+      {
+        id: "acropolis-steps",
+        title: "Acropolis gathering place",
+        shortLabel: "Acropolis",
+        narration:
+          "The Acropolis was a sacred high place and civic symbol. Athenians climbed here for festivals, processions, and rituals that connected the city to its patron goddess.",
+        screenPosition: { left: 36, top: 60 },
+      },
+    ],
     free: false,
   },
 ];
