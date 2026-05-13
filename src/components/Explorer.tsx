@@ -139,6 +139,42 @@ function PoiGuide({
   );
 }
 
+function AssignmentPrompt({
+  prompt,
+  onDismiss,
+}: {
+  prompt: string;
+  onDismiss: () => void;
+}) {
+  return (
+    <section
+      aria-label="Teacher assignment prompt"
+      className="fixed right-4 top-20 z-30 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-sky-200/20 bg-slate-950/70 p-4 text-white shadow-2xl backdrop-blur-md pointer-events-auto"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-sky-200/85">
+            Assignment
+          </p>
+          <h2 className="mt-1 text-sm font-semibold text-white">Your exploration task</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Hide assignment prompt"
+          className="rounded-full bg-white/10 px-2 py-1 text-xs text-white/70 transition hover:bg-white/20 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-100"
+        >
+          Hide
+        </button>
+      </div>
+      <p className="mt-3 text-sm leading-6 text-white/82">{prompt}</p>
+      <p className="mt-3 text-xs text-white/45">
+        Tip: click POIs as evidence, then write your response outside History Walks.
+      </p>
+    </section>
+  );
+}
+
 export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [webglSupported, setWebglSupported] = useState(true);
@@ -146,6 +182,8 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
   const [loading, setLoading] = useState(true);
   const [overlayVisible, setOverlayVisible] = useState(true);
   const [selectedPoiId, setSelectedPoiId] = useState<string | null>(null);
+  const [assignmentPrompt, setAssignmentPrompt] = useState<string | null>(null);
+  const [assignmentDismissed, setAssignmentDismissed] = useState(false);
   const fadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedPoi = world.pointsOfInterest.find((poi) => poi.id === selectedPoiId);
@@ -170,6 +208,20 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
     setOverlayVisible(true);
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const prompt = searchParams.get("assignment") ?? searchParams.get("prompt");
+
+    if (prompt?.trim()) {
+      setAssignmentPrompt(prompt.trim().slice(0, 280));
+      setAssignmentDismissed(false);
+    } else {
+      setAssignmentPrompt(null);
+    }
+  }, [world.slug]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -353,6 +405,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
 
         <EraBar era={`${world.eraEmoji} ${world.era} · ${world.displayName}`} visible={true} />
         <NarrationPanel text={narrationText} visible={true} />
+        {assignmentPrompt && !assignmentDismissed && (
+          <AssignmentPrompt
+            prompt={assignmentPrompt}
+            onDismiss={() => setAssignmentDismissed(true)}
+          />
+        )}
       </>
     );
   }
@@ -404,6 +462,12 @@ export default function Explorer({ world = DEFAULT_WORLD }: ExplorerProps) {
             onReset={resetNarration}
           />
         </>
+      )}
+      {assignmentPrompt && !assignmentDismissed && (
+        <AssignmentPrompt
+          prompt={assignmentPrompt}
+          onDismiss={() => setAssignmentDismissed(true)}
+        />
       )}
       <NarrationPanel title={selectedPoi?.title} text={narrationText} visible={overlayVisible} />
       <ControlsHelp />
